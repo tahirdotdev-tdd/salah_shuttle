@@ -53,6 +53,7 @@ class _CopyButtonState extends State<CopyButton> {
                 decoration: BoxDecoration(
                   color: shadowColor,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(width: 3, color: isDark ? Colors.white : Colors.black),
                 ),
               ),
             ),

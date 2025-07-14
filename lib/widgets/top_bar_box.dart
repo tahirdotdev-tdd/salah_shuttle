@@ -23,6 +23,7 @@ class TopBarBox extends StatefulWidget {
 class _TopBarBoxState extends State<TopBarBox> {
   bool _pressed = false;
 
+
   void _onTapDown(_) => setState(() => _pressed = true);
   void _onTapUp(_) => setState(() => _pressed = false);
   void _onTapCancel() => setState(() => _pressed = false);
@@ -30,6 +31,7 @@ class _TopBarBoxState extends State<TopBarBox> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Scaling factors
     final boxWidth = screenWidth * 0.16; // ~16% of screen width
@@ -70,6 +72,7 @@ class _TopBarBoxState extends State<TopBarBox> {
                     decoration: BoxDecoration(
                       color: const Color(0xff1D1A1A),
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(width: 3, color: isDark ? Colors.white : Colors.black,)
                     ),
                   ),
                 ),
@@ -93,7 +96,7 @@ class _TopBarBoxState extends State<TopBarBox> {
                     decoration: BoxDecoration(
                       color: const Color(0xff1D1A1A),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(width: 2, color: Colors.white),
+                        border: Border.all(width: 3, color: isDark ? Colors.white : Colors.black,)
                     ),
                     child: FittedBox(
                       child: Text(

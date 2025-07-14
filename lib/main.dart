@@ -21,14 +21,20 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.currentTheme == ThemeMode.dark;
 
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Salah Shuttle',
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      themeMode: themeProvider.currentTheme,
-      home: const HomeScreen(),
+    return AnimatedTheme(
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      data: isDark ? darkTheme : lightTheme,
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Salah Shuttle',
+        theme: lightTheme,
+        darkTheme: darkTheme,
+        themeMode: themeProvider.currentTheme,
+        home: const HomeScreen(),
+      ),
     );
   }
 }

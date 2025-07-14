@@ -97,7 +97,12 @@ class _QiblahScreenState extends State<QiblahScreen> {
       backgroundColor: isDark ? const Color(0xFF121212) : scaffoldBackgroundColor,
       appBar: AppBar(
         centerTitle: true,
-        title: Text("Qiblah Compass", style: standardFont()),
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back_ios_new_outlined,
+              color: isDark ? Colors.white : Colors.black),
+        ),
+        title: Text("Qiblah Compass", style: standardFont(context)),
         backgroundColor: isDark ? const Color(0xFF121212) : scaffoldBackgroundColor,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
@@ -145,7 +150,7 @@ class _QiblahScreenState extends State<QiblahScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const SizedBox(height: 16),
-        Text("Qiblah Direction", style: standardFont()),
+        Text("Qiblah Direction", style: standardFont(context)),
         const SizedBox(height: 16),
         _buildCompassCard(isDark),
         const SizedBox(height: 24),

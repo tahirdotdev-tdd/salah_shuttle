@@ -67,7 +67,7 @@ class _DateScreenState extends State<DateScreen> {
                     color: isDark ? Colors.white : Colors.black),
               ),
               centerTitle: true,
-              title: Text("Today's Islamic Date", style: standardFont()),
+              title: Text("Today's Islamic Date", style: standardFont(context)),
             ),
             SliverFillRemaining(
               hasScrollBody: false,

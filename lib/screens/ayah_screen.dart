@@ -75,7 +75,9 @@ class _AyahScreenState extends State<AyahScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               borderRadius: BorderRadius.circular(16),
               borderWidth: 2.0,
-              borderColor: Colors.black,
+              borderColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.black54
+                  : const Color(0xff152313),
               boxShadows: [
                 BoxShadow(
                   color: Theme.of(context).brightness == Brightness.dark
@@ -180,11 +182,11 @@ class _AyahScreenState extends State<AyahScreen> {
                 icon: Icon(Icons.arrow_back_ios_new_outlined,
                     color: isDark ? Colors.white : Colors.black),
               ),
-              title: Text("Daily Ayah", style: standardFont()),
+              title: Text("Daily Ayah", style: standardFont(context)),
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 120),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-TextStyle standardFont() {
+
+
+TextStyle standardFont(BuildContext context) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
   return GoogleFonts.amiri(
-    color: Colors.black,
+    color: isDark ? Colors.white : Colors.black,
     fontSize: 26,
   );
 }
-
 TextStyle salahText(BuildContext context) {
   final width = MediaQuery.of(context).size.width;
   return GoogleFonts.amiri(
@@ -17,9 +19,10 @@ TextStyle salahText(BuildContext context) {
 }
 TextStyle qiblahText(BuildContext context) {
   final width = MediaQuery.of(context).size.width;
-  return GoogleFonts.amiri(
-    color: Colors.black,
-    fontSize: width * 0.060,
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return GoogleFonts.cairo(
+    color: isDark ? Colors.grey[200] : Colors.black,
+    fontSize: width * 0.058,
   );
 }
 

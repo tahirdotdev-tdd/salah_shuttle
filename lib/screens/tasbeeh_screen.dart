@@ -15,7 +15,7 @@ class TasbeehScreen extends StatelessWidget {
       appBar: AppBar(
         titleSpacing: 0,
         centerTitle: true,
-        title: Text("Tasbeeh", style: standardFont()),
+        title: Text("Tasbeeh", style: standardFont(context)),
         backgroundColor: isDark ? const Color(0xFF121212) : scaffoldBackgroundColor,
         foregroundColor: isDark ? Colors.white : Colors.black,
         leading: IconButton(

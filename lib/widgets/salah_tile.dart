@@ -125,7 +125,7 @@ class _SalahTileState extends State<SalahTile> {
                 height: tileHeight,
                 width: tileWidth * 0.96,
                 decoration: BoxDecoration(
-                  color: widget.tileColor,
+                  color: isDark ? Color(0xFF121212) : widget.tileColor,
                   border: Border.all(width: 3, color: borderColor),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
@@ -156,7 +156,7 @@ class _SalahTileState extends State<SalahTile> {
                   width: tileWidth * 0.965,
                   padding: EdgeInsets.all(tileHeight * 0.14),
                   decoration: BoxDecoration(
-                    color: widget.tileColor,
+                    color: isDark ? Color(0xFF121212) : widget.tileColor,
                     border: Border.all(width: 3, color: borderColor),
                     borderRadius: BorderRadius.circular(20),
                   ),

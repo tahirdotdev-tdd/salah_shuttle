@@ -25,8 +25,8 @@ class _TasbeehWidgetState extends State<TasbeehWidget> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mainColor = isDark ? Colors.green.shade700 : Colors.green;
-    final textColor = isDark ? Colors.white : Colors.black;
+    final mainColor = isDark ? Colors.black : Colors.green;
+    final textColor = isDark ? Colors.black : Colors.black;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -36,7 +36,7 @@ class _TasbeehWidgetState extends State<TasbeehWidget> {
           height: 200,
           width: 200,
           decoration: BoxDecoration(
-            border: Border.all(width: 3, color: Colors.black),
+            border: Border.all(width: 3, color: isDark ? Colors.white : Colors.black),
             borderRadius: BorderRadius.circular(100),
             color: mainColor,
           ),
@@ -64,7 +64,7 @@ class _TasbeehWidgetState extends State<TasbeehWidget> {
             height: 180,
             width: 150,
             decoration: BoxDecoration(
-              border: Border.all(width: 3, color: Colors.black),
+              border: Border.all(width: 3, color: isDark ? Colors.white : Colors.black),
               color: mainColor,
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(20),
