@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:salah_shuttle/screens/date_screen.dart';
+
+// Make sure to import your custom route transition
+// import 'package:salah_shuttle/transitions/slide_right_route.dart'; 
 
 class TopBarBox extends StatefulWidget {
   final String label;
   final Widget Function() onScreenBuilder;
   final VoidCallback? onTap;
-
 
   const TopBarBox({
     super.key,
@@ -14,8 +15,6 @@ class TopBarBox extends StatefulWidget {
     this.onTap,
   });
 
-
-
   @override
   State<TopBarBox> createState() => _TopBarBoxState();
 }
@@ -23,19 +22,52 @@ class TopBarBox extends StatefulWidget {
 class _TopBarBoxState extends State<TopBarBox> {
   bool _pressed = false;
 
+  void _onTapDown(_) {
+    setState(() => _pressed = true);
+  }
 
-  void _onTapDown(_) => setState(() => _pressed = true);
-  void _onTapUp(_) => setState(() => _pressed = false);
-  void _onTapCancel() => setState(() => _pressed = false);
+  void _onTapCancel() {
+    setState(() => _pressed = false);
+  }
+
+  /// This method now orchestrates the animation and navigation.
+  Future<void> _onTapUp(_) async {
+    // A small delay to ensure the "pressed" state is visually perceived by the user.
+    // The press animation itself has a duration of 100ms.
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Check if the widget is still in the widget tree before proceeding.
+    if (!mounted) return;
+
+    // Trigger the "un-press" animation.
+    setState(() => _pressed = false);
+
+    // Check if this is a navigation box or the toggle box.
+    if (widget.onTap == null) {
+      // This is a navigation box.
+      // Wait for the "un-press" animation to complete before navigating.
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          SlideRightPageRoute(page: widget.onScreenBuilder()),
+        );
+      }
+    } else {
+      // This is the toggle box. Execute its onTap callback immediately.
+      // The un-press animation will happen concurrently.
+      widget.onTap!();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Scaling factors
-    final boxWidth = screenWidth * 0.16; // ~16% of screen width
-    final boxHeight = boxWidth * 1.1;    // keep same aspect ratio
+    final boxWidth = screenWidth * 0.16;
+    final boxHeight = boxWidth * 1.1;
     final shadowOffsetY = boxHeight * 0.08;
     final shadowOffsetX = boxWidth * 0.08;
     final pressedOffsetY = _pressed ? shadowOffsetY : 0.0;
@@ -44,14 +76,7 @@ class _TopBarBoxState extends State<TopBarBox> {
     return Padding(
       padding: EdgeInsets.only(top: screenWidth * 0.2),
       child: GestureDetector(
-        onTap: widget.onTap ??
-                () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => widget.onScreenBuilder()),
-              );
-            },
-
+        // We now handle all logic in the specific down/up/cancel callbacks.
         onTapDown: _onTapDown,
         onTapUp: _onTapUp,
         onTapCancel: _onTapCancel,
@@ -64,20 +89,19 @@ class _TopBarBoxState extends State<TopBarBox> {
               Positioned(
                 right: 0,
                 top: shadowOffsetY,
-                child: Opacity(
-                  opacity: 1,
-                  child: Container(
-                    height: boxHeight,
-                    width: boxWidth,
-                    decoration: BoxDecoration(
-                      color: const Color(0xff1D1A1A),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(width: 3, color: isDark ? Colors.white : Colors.black,)
+                child: Container(
+                  height: boxHeight,
+                  width: boxWidth,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1D1A1A),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      width: 3,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                 ),
               ),
-
               // Front Container
               Positioned(
                 left: 0,
@@ -96,7 +120,10 @@ class _TopBarBoxState extends State<TopBarBox> {
                     decoration: BoxDecoration(
                       color: const Color(0xff1D1A1A),
                       borderRadius: BorderRadius.circular(8),
-                        border: Border.all(width: 3, color: isDark ? Colors.white : Colors.black,)
+                      border: Border.all(
+                        width: 3,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
                     child: FittedBox(
                       child: Text(
@@ -116,4 +143,28 @@ class _TopBarBoxState extends State<TopBarBox> {
       ),
     );
   }
+}
+
+
+// A custom PageRoute that transitions by sliding the new page in from the right.
+class SlideRightPageRoute<T> extends PageRouteBuilder<T> {
+  final Widget page;
+
+  SlideRightPageRoute({required this.page})
+      : super(
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+          pageBuilder: (context, animation, secondaryAnimation) => page,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1.0, 0.0);
+            const end = Offset.zero;
+            final curve = Curves.easeOut;
+            final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            final offsetAnimation = animation.drive(tween);
+            return SlideTransition(
+              position: offsetAnimation,
+              child: child,
+            );
+          },
+        );
 }

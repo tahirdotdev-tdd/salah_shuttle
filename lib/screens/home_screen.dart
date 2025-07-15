@@ -6,7 +6,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 
-
 import 'package:salah_shuttle/widgets/custom_refresh.dart';
 import 'package:salah_shuttle/widgets/salah_tile.dart';
 import 'package:salah_shuttle/widgets/top_bar.dart';
@@ -45,26 +44,32 @@ class _HomeScreenState extends State<HomeScreen> {
         context: context,
         barrierDismissible: false, // User must interact with the dialog
         builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           backgroundColor: Theme.of(context).cardColor,
           titlePadding: const EdgeInsets.only(top: 16, left: 20, right: 8),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 20,
+          ),
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'No Internet Connection',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold,fontSize: 18),
               ),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close,size: 25,color: Colors.red,),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
               ),
             ],
           ),
-          content: const Text(
+          content:  Text(
+            textAlign: TextAlign.center,
             'Prayer times are fetched locally.',
             style: TextStyle(fontSize: 16),
           ),
@@ -96,7 +101,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Listens for connectivity changes while the app is running.
   void _listenToConnectivity() {
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
       // Use the less-intrusive SnackBar for changes that happen after the initial load.
       if (results.contains(ConnectivityResult.none) && !isLoading) {
         _showOfflineSnackbar();
@@ -106,7 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Fetches location and calculates prayer times on initial load or refresh.
   Future<void> _fetchPrayerTimes() async {
-    final List<ConnectivityResult> connectivityResult = await Connectivity().checkConnectivity();
+    final List<ConnectivityResult> connectivityResult = await Connectivity()
+        .checkConnectivity();
     // Use the AlertDialog for the initial check.
     if (connectivityResult.contains(ConnectivityResult.none)) {
       _showNoInternetDialog();
@@ -114,7 +122,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         permission = await Geolocator.requestPermission();
       }
 
@@ -130,7 +139,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final params = CalculationMethod.karachi();
       params.madhab = Madhab.hanafi;
       final date = DateTime.now();
-      final times = PrayerTimes(coordinates: coordinates, date: date, calculationParameters: params);
+      final times = PrayerTimes(
+        coordinates: coordinates,
+        date: date,
+        calculationParameters: params,
+      );
 
       if (!mounted) return;
 
@@ -171,7 +184,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xfff3e8cb),
+      backgroundColor: isDark
+          ? const Color(0xFF121212)
+          : const Color(0xfff3e8cb),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 700),
         switchInCurve: Curves.easeOutCubic,
@@ -184,17 +199,17 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: isLoading
             ? Center(
-          key: const ValueKey('loading'),
-          child: LoadingAnimationWidget.staggeredDotsWave(
-            color: isDark ? Colors.teal : Colors.green,
-            size: 100,
-          ),
-        )
+                key: const ValueKey('loading'),
+                child: LoadingAnimationWidget.staggeredDotsWave(
+                  color: isDark ? Colors.teal : Colors.green,
+                  size: 100,
+                ),
+              )
             : HomeContent(
-          key: const ValueKey('home'),
-          prayerTimes: prayerTimes,
-          onRefresh: _handleRefresh,
-        ),
+                key: const ValueKey('home'),
+                prayerTimes: prayerTimes,
+                onRefresh: _handleRefresh,
+              ),
       ),
     );
   }

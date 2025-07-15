@@ -38,7 +38,8 @@ class _SalahTileState extends State<SalahTile> {
       final isOffline = connectivity == ConnectivityResult.none;
 
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         permission = await Geolocator.requestPermission();
       }
 
@@ -80,7 +81,9 @@ class _SalahTileState extends State<SalahTile> {
       }
 
       if (time != null) {
-        final formatted = TimeOfDay.fromDateTime(time.toLocal()).format(context);
+        final formatted = TimeOfDay.fromDateTime(
+          time.toLocal(),
+        ).format(context);
         setState(() => salahTime = formatted);
       } else {
         setState(() => salahTime = widget.fallbackTime);
@@ -106,7 +109,9 @@ class _SalahTileState extends State<SalahTile> {
     final frontOffsetY = _pressed ? shadowOffset : 0;
 
     final borderColor = isDark ? Colors.white : Colors.black;
-    final shadowColor = isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.5);
+    final shadowColor = isDark
+        ? Colors.black.withOpacity(0.3)
+        : Colors.black.withOpacity(0.5);
 
     return GestureDetector(
       onTapDown: _onTapDown,
@@ -167,10 +172,7 @@ class _SalahTileState extends State<SalahTile> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            currentDate,
-                            style: currentDateStyle(context),
-                          ),
+                          Text(currentDate, style: currentDateStyle(context)),
                         ],
                       ),
                       SizedBox(height: tileHeight * 0.06),
@@ -179,15 +181,9 @@ class _SalahTileState extends State<SalahTile> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            widget.salahLabel,
-                            style: salahText(context),
-                          ),
+                          Text(widget.salahLabel, style: salahText(context)),
                           const Spacer(),
-                          Text(
-                            salahTime,
-                            style: salahText(context),
-                          ),
+                          Text(salahTime, style: salahText(context)),
                         ],
                       ),
                     ],

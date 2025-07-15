@@ -19,7 +19,7 @@ class CustomRefresh extends StatefulWidget {
 
 class _CustomRefreshState extends State<CustomRefresh> {
   final GlobalKey<LiquidPullToRefreshState> _refreshIndicatorKey =
-  GlobalKey<LiquidPullToRefreshState>();
+      GlobalKey<LiquidPullToRefreshState>();
 
   Future<void> _handleRefresh() {
     final completer = Completer<void>();
@@ -37,7 +37,9 @@ class _CustomRefreshState extends State<CustomRefresh> {
         borderRadius: BorderRadius.circular(16),
         borderWidth: 2.0,
         borderColor: isDark ? Colors.white : Colors.black,
-        backgroundColor: isDark ? const Color(0xff1f4432) : const Color(0xff2a7321),
+        backgroundColor: isDark
+            ? const Color(0xff1f4432)
+            : const Color(0xff2a7321),
         shouldIconPulse: true,
         flushbarPosition: FlushbarPosition.BOTTOM,
         forwardAnimationCurve: Curves.easeOutBack,

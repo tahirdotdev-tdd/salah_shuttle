@@ -29,7 +29,9 @@ class _CopyButtonState extends State<CopyButton> {
     final offsetX = _pressed ? shadowOffsetX : 0.0;
     final offsetY = _pressed ? shadowOffsetY : 0.0;
 
-    final Color buttonColor = isDark ? const Color(0xff2B2B2B) : const Color(0xff1D1A1A);
+    final Color buttonColor = isDark
+        ? const Color(0xff2B2B2B)
+        : const Color(0xff1D1A1A);
     final Color textColor = isDark ? Colors.white : Colors.white;
     final Color shadowColor = isDark ? Colors.black : const Color(0xff1D1A1A);
 
@@ -53,7 +55,10 @@ class _CopyButtonState extends State<CopyButton> {
                 decoration: BoxDecoration(
                   color: shadowColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(width: 3, color: isDark ? Colors.white : Colors.black),
+                  border: Border.all(
+                    width: 3,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
                 ),
               ),
             ),

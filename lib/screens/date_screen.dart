@@ -49,22 +49,30 @@ class _DateScreenState extends State<DateScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : scaffoldBackgroundColor,
+      backgroundColor: isDark
+          ? const Color(0xFF121212)
+          : scaffoldBackgroundColor,
       body: LiquidPullToRefresh(
         onRefresh: _onRefresh,
         showChildOpacityTransition: false,
         color: isDark ? Colors.teal : Colors.green,
-        backgroundColor: isDark ? const Color(0xFF121212) : scaffoldBackgroundColor,
+        backgroundColor: isDark
+            ? const Color(0xFF121212)
+            : scaffoldBackgroundColor,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverAppBar(
               pinned: true,
-              backgroundColor: isDark ? const Color(0xFF121212) : scaffoldBackgroundColor,
+              backgroundColor: isDark
+                  ? const Color(0xFF121212)
+                  : scaffoldBackgroundColor,
               leading: IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: Icon(Icons.arrow_back_ios_new_outlined,
-                    color: isDark ? Colors.white : Colors.black),
+                icon: Icon(
+                  Icons.arrow_back_ios_new_outlined,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
               centerTitle: true,
               title: Text("Today's Islamic Date", style: standardFont(context)),

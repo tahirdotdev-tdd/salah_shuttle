@@ -1,11 +1,13 @@
 // main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:showcaseview/showcaseview.dart';
+
 import 'package:salah_shuttle/utils/dark_theme.dart';
 import 'package:salah_shuttle/utils/light_theme.dart';
 import 'package:salah_shuttle/utils/theme_provider.dart';
-
 import 'screens/home_screen.dart';
+
 void main() {
   runApp(
     ChangeNotifierProvider(
@@ -33,7 +35,11 @@ class MyApp extends StatelessWidget {
         theme: lightTheme,
         darkTheme: darkTheme,
         themeMode: themeProvider.currentTheme,
-        home: const HomeScreen(),
+        home: ShowCaseWidget(
+          builder: (context) => const HomeScreen(),
+          blurValue: 1,
+          // overlayColor & overlayOpacity are not supported — removed ✅
+        ),
       ),
     );
   }

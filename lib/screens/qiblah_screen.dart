@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
@@ -22,19 +24,35 @@ class _QiblahScreenState extends State<QiblahScreen> {
   double? heading;
   String? _error;
   StreamSubscription<CompassEvent>? _compassSubscription;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
+    // Subscribe to connectivity changes
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen(_updateConnectionStatus);
+    // Initial attempt to get Qiblah direction
     _initializeQiblah();
   }
 
   @override
   void dispose() {
     _compassSubscription?.cancel();
+    // Cancel the connectivity subscription to prevent memory leaks
+    _connectivitySubscription.cancel();
     super.dispose();
   }
 
+  /// Listens to connectivity changes and retries initialization if connection is restored.
+  void _updateConnectionStatus(List<ConnectivityResult> result) {
+    // If we now have a connection and there was a previous error, try again.
+    if (!result.contains(ConnectivityResult.none) && _error != null) {
+      _initializeQiblah();
+    }
+  }
+
+  /// Initializes the Qiblah logic: checks permissions, gets location, and fetches direction.
   Future<void> _initializeQiblah() async {
     setState(() {
       _error = null;
@@ -42,7 +60,19 @@ class _QiblahScreenState extends State<QiblahScreen> {
       heading = null;
     });
 
+    // 1. Check for internet connectivity first
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      if (mounted) {
+        setState(() {
+          _error = "Please turn on your internet connection to find the Qiblah direction.";
+        });
+      }
+      return; // Stop if no internet
+    }
+
     try {
+      // 2. Check for location services and permissions
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) throw Exception("Please enable location services.");
 
@@ -55,13 +85,18 @@ class _QiblahScreenState extends State<QiblahScreen> {
         throw Exception("Location permission permanently denied. Please enable it from app settings.");
       }
 
+      // 3. Get current position
       Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      
+      // 4. Fetch Qiblah direction from API
       final url = Uri.parse('https://api.aladhan.com/v1/qibla/${position.latitude}/${position.longitude}');
-      final response = await http.get(url);
-      if (response.statusCode != 200) throw Exception("Failed to fetch Qiblah direction from API.");
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) throw Exception("Failed to fetch Qiblah direction from the server.");
 
       final data = jsonDecode(response.body);
 
+      // 5. Start listening to compass events
+      _compassSubscription?.cancel(); // Ensure any old subscription is cancelled
       _compassSubscription = FlutterCompass.events?.listen((event) {
         if (mounted && event.heading != null) {
           setState(() {
@@ -70,13 +105,28 @@ class _QiblahScreenState extends State<QiblahScreen> {
         }
       });
 
+      // 6. Update the state with the fetched Qiblah direction
       if (mounted) {
         setState(() {
           qiblahDirection = (data['data']['direction'] as num).toDouble();
         });
       }
+    } on SocketException {
+      // Catch specific network errors during the HTTP request
+      if (mounted) {
+        setState(() => _error = "No internet connection. Please check your network and try again.");
+      }
+    } on TimeoutException {
+      // Catch errors if the request takes too long
+       if (mounted) {
+        setState(() => _error = "The request timed out. Please try again.");
+      }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      // Catch all other errors (permissions, etc.)
+      if (mounted) {
+        // Clean up the exception message for better display
+        setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
+      }
     }
   }
 
@@ -112,6 +162,7 @@ class _QiblahScreenState extends State<QiblahScreen> {
   }
 
   Widget _buildMainContent(bool isDark) {
+    // If there is an error, display it.
     if (_error != null) {
       return Padding(
         padding: const EdgeInsets.all(20),
@@ -139,13 +190,15 @@ class _QiblahScreenState extends State<QiblahScreen> {
       );
     }
 
+    // While waiting for the qiblah direction, show a loading indicator.
     if (qiblahDirection == null) {
       return LoadingAnimationWidget.staggeredDotsWave(
         color: isDark ? Colors.teal : Colors.green,
         size: 100,
       );
     }
-
+    
+    // Once data is available, show the compass.
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -158,6 +211,11 @@ class _QiblahScreenState extends State<QiblahScreen> {
       ],
     );
   }
+
+   // The rest of your UI-building methods (_buildCompassCard, _buildDirectionDetails, etc.) remain unchanged.
+  // ... (Paste your existing _buildCompassCard, _buildDirectionDetails, _buildValueRow, _QiblahDot, and _CompassRosePainter here)
+  // ...
+
 
   Widget _buildCompassCard(bool isDark) {
     final double compassRotation = -(heading ?? 0) * math.pi / 180;

@@ -1,16 +1,20 @@
-import 'package:another_flushbar/flushbar.dart';
-import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
+
+import 'package:another_flushbar/flushbar.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:salah_shuttle/widgets/copy_button.dart';
-import 'package:flutter/services.dart';
 
 import '../styles/colors.dart';
 import '../styles/fonts.dart';
 import '../widgets/daily_ayah_tile.dart';
-import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 
 class AyahScreen extends StatefulWidget {
   const AyahScreen({super.key});
@@ -25,6 +29,7 @@ class _AyahScreenState extends State<AyahScreen> {
   String? reference;
   bool isLoading = true;
   String? error;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
   static const int totalAyat = 6236;
   static const String arabicEdition = 'ar.alafasy';
@@ -33,23 +38,56 @@ class _AyahScreenState extends State<AyahScreen> {
   @override
   void initState() {
     super.initState();
+    // Subscribe to connectivity changes
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen(_updateConnectionStatus);
+    // Fetch the initial Ayah
     fetchRandomAyah();
   }
 
+  @override
+  void dispose() {
+    // Cancel subscription to prevent memory leaks
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
+  /// Automatically fetches a new Ayah if connection is restored and there was a previous error.
+  void _updateConnectionStatus(List<ConnectivityResult> result) {
+    if (!result.contains(ConnectivityResult.none) && error != null) {
+      fetchRandomAyah();
+    }
+  }
+
+  /// Fetches a random Ayah from the API, with robust error and connectivity handling.
   Future<void> fetchRandomAyah({bool showFlushbar = false}) async {
     setState(() {
       isLoading = true;
       error = null;
     });
 
+    // 1. Check for internet connectivity first
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      if (mounted) {
+        setState(() {
+          error = "No internet connection. Please connect to a network to fetch an Ayah.";
+          isLoading = false;
+        });
+      }
+      return; // Stop execution
+    }
+
     final random = Random();
     final ayahNumber = random.nextInt(totalAyat) + 1;
-
-    final url =
-        'http://api.alquran.cloud/v1/ayah/$ayahNumber/editions/$arabicEdition,$englishEdition';
+    final url = 'http://api.alquran.cloud/v1/ayah/$ayahNumber/editions/$arabicEdition,$englishEdition';
 
     try {
-      final response = await http.get(Uri.parse(url));
+      // 2. Make the API call with a timeout
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      
+      if (!mounted) return; // Ensure the widget is still in the tree
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['status'] == 'OK') {
@@ -64,92 +102,30 @@ class _AyahScreenState extends State<AyahScreen> {
           });
 
           if (showFlushbar) {
-            Flushbar(
-              message: "Daily ayah refreshed!",
-              duration: const Duration(seconds: 3),
-              backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.teal
-                  : Colors.green,
-              flushbarStyle: FlushbarStyle.FLOATING,
-              flushbarPosition: FlushbarPosition.BOTTOM,
-              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              borderRadius: BorderRadius.circular(16),
-              borderWidth: 2.0,
-              borderColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black54
-                  : const Color(0xff152313),
-              boxShadows: [
-                BoxShadow(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.black54
-                      : const Color(0xff152313),
-                  offset: const Offset(0, 3),
-                  blurRadius: 6,
-                ),
-              ],
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              messageColor: Colors.white,
-            ).show(context);
+            _showRefreshFlushbar();
           }
         } else {
-          setState(() {
-            error = 'Error: ${data['status']}';
-            isLoading = false;
-          });
+          setState(() => error = 'API Error: ${data['status']}');
         }
       } else {
-        setState(() {
-          error = 'Network error: ${response.statusCode}';
-          isLoading = false;
-        });
+        setState(() => error = 'Failed to load data. Server responded with status code: ${response.statusCode}');
       }
+    } on SocketException {
+      if (mounted) setState(() => error = "No internet connection. Please check your network and try again.");
+    } on TimeoutException {
+      if (mounted) setState(() => error = "The request timed out. Please try again.");
     } catch (e) {
-      setState(() {
-        error = 'Exception: $e';
-        isLoading = false;
-      });
+      if (mounted) setState(() => error = 'An unexpected error occurred: $e');
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   void _copyAyahToClipboard() {
     if (arabicAyah != null && englishAyah != null && reference != null) {
       final ayahText = "$arabicAyah\n\n$englishAyah\n\n📖 $reference";
-
       Clipboard.setData(ClipboardData(text: ayahText));
-
-      Flushbar(
-        message: 'Ayah copied to clipboard!',
-        duration: const Duration(seconds: 3),
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.teal
-            : Colors.green,
-        flushbarStyle: FlushbarStyle.FLOATING,
-        flushbarPosition: FlushbarPosition.BOTTOM,
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        borderRadius: BorderRadius.circular(16),
-        borderWidth: 2.0,
-        borderColor: Colors.black,
-        boxShadows: [
-          BoxShadow(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.black54
-                : const Color(0xff152313),
-            offset: const Offset(0, 3),
-            blurRadius: 6,
-          ),
-        ],
-        icon: const Icon(Icons.check_circle, color: Colors.white),
-        messageColor: Colors.white,
-        mainButton: TextButton(
-          onPressed: () {
-            Clipboard.setData(ClipboardData(text: ayahText));
-          },
-          child: const Text(
-            'Copy Again',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-      ).show(context);
+      _showCopyFlushbar(ayahText);
     }
   }
 
@@ -179,35 +155,23 @@ class _AyahScreenState extends State<AyahScreen> {
               centerTitle: true,
               leading: IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: Icon(Icons.arrow_back_ios_new_outlined,
-                    color: isDark ? Colors.white : Colors.black),
+                icon: Icon(Icons.arrow_back_ios_new_outlined, color: isDark ? Colors.white : Colors.black),
               ),
               title: Text("Daily Ayah", style: standardFont(context)),
             ),
-            SliverToBoxAdapter(
+            SliverFillRemaining(
+              hasScrollBody: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 120),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Center(
-                      child: isLoading
-                          ? LoadingAnimationWidget.staggeredDotsWave(
-                          color: isDark ? Colors.teal : Colors.green, size: 100)
-                          : error != null
-                          ? Text(error!,
-                          style: TextStyle(
-                              color: isDark ? Colors.red[200] : Colors.red))
-                          : DailyAyahTile(
-                        tileColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                        arabicAyah: arabicAyah!,
-                        englishAyah: englishAyah!,
-                        reference: reference!,
-                      ),
-                    ),
-                    const SizedBox(height: 60),
-                    if (!isLoading && error == null)
+                    _buildContent(isDark), // Central content widget
+                    if (!isLoading && error == null) ...[
+                      const SizedBox(height: 60),
                       CopyButton(label: "Copy", onTap: _copyAyahToClipboard),
+                    ],
+                    const SizedBox(height: 20), // Padding at the bottom
                   ],
                 ),
               ),
@@ -216,5 +180,78 @@ class _AyahScreenState extends State<AyahScreen> {
         ),
       ),
     );
+  }
+
+  /// Builds the main content area: loading indicator, error message, or Ayah tile.
+  Widget _buildContent(bool isDark) {
+    if (isLoading) {
+      return LoadingAnimationWidget.staggeredDotsWave(
+        color: isDark ? Colors.teal : Colors.green,
+        size: 100,
+      );
+    }
+    if (error != null) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Text(
+              error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: isDark ? Colors.red[200] : Colors.red, fontSize: 16),
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: fetchRandomAyah,
+            icon: const Icon(Icons.refresh),
+            label: const Text("Retry"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.teal.shade700 : Colors.green.shade700,
+            ),
+          )
+        ],
+      );
+    }
+    return DailyAyahTile(
+      tileColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      arabicAyah: arabicAyah!,
+      englishAyah: englishAyah!,
+      reference: reference!,
+    );
+  }
+
+  // Extracted Flushbar methods for cleaner code
+  void _showRefreshFlushbar() {
+    Flushbar(
+      message: "Daily ayah refreshed!",
+      duration: const Duration(seconds: 3),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.teal : Colors.green,
+      flushbarStyle: FlushbarStyle.FLOATING,
+      flushbarPosition: FlushbarPosition.BOTTOM,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      borderRadius: BorderRadius.circular(16),
+      icon: const Icon(Icons.refresh, color: Colors.white),
+      messageColor: Colors.white,
+    ).show(context);
+  }
+
+  void _showCopyFlushbar(String ayahText) {
+    Flushbar(
+      message: 'Ayah copied to clipboard!',
+      duration: const Duration(seconds: 3),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.teal : Colors.green,
+      flushbarStyle: FlushbarStyle.FLOATING,
+      flushbarPosition: FlushbarPosition.BOTTOM,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      borderRadius: BorderRadius.circular(16),
+      icon: const Icon(Icons.check_circle, color: Colors.white),
+      messageColor: Colors.white,
+      mainButton: TextButton(
+        onPressed: () => Clipboard.setData(ClipboardData(text: ayahText)),
+        child: const Text('Copy Again', style: TextStyle(color: Colors.white)),
+      ),
+    ).show(context);
   }
 }
