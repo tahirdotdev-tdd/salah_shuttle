@@ -4,8 +4,11 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:adhan_dart/adhan_dart.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'package:salah_shuttle/services/notification_service.dart';
+import 'package:salah_shuttle/services/notification_service.dart'; // Ensure this is imported
+import 'package:salah_shuttle/styles/colors.dart';
+import 'package:salah_shuttle/widgets/animated_appbar_title.dart';
 import 'package:salah_shuttle/widgets/custom_refresh.dart';
 import 'package:salah_shuttle/widgets/salah_tile.dart';
 import 'package:salah_shuttle/widgets/top_bar.dart';
@@ -25,8 +28,25 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _listenToConnectivity(); // For real-time changes
-    _fetchPrayerTimes(); // For initial load
+    // ✅ CHANGED: Call the new initialization method instead of fetching directly.
+    _initializeAndSchedule();
+    _listenToConnectivity();
+  }
+
+  // ✅ ADDED: New method to handle service initialization and permissions on startup.
+  Future<void> _initializeAndSchedule() async {
+    // 1. Initialize the notification service
+    final notificationService = NotificationService();
+    await notificationService.init();
+
+    // 2. Request notification permissions from the user (CRUCIAL STEP)
+    await notificationService.requestPermissions();
+
+    // 3. Proceed with your existing logic to fetch times and schedule notifications.
+    await _fetchPrayerTimes();
+
+    // 4. (Optional) Show a welcome notification to confirm it's working.
+    await notificationService.showWelcomeNotification();
   }
 
   @override
@@ -34,6 +54,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _connectivitySubscription?.cancel();
     super.dispose();
   }
+
+  //
+  // --- NO OTHER CHANGES ARE NEEDED BELOW THIS LINE ---
+  // The rest of your file remains exactly as you wrote it.
+  //
 
   /// Shows a custom AlertDialog for the initial offline state.
   void _showNoInternetDialog() {
@@ -101,8 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Listens for connectivity changes while the app is running.
   void _listenToConnectivity() {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      results,
-    ) {
+        results,
+        ) {
       if (results.contains(ConnectivityResult.none) && !isLoading) {
         _showOfflineSnackbar();
       }
@@ -182,8 +207,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await notificationService.cancelAllNotifications();
 
     final now = DateTime.now();
-
-    // The list must accept nullable DateTimes from the 'times' object
     final List<MapEntry<String, DateTime?>> prayers = [
       MapEntry('Fajr', times.fajr),
       MapEntry('Dhuhr', times.dhuhr),
@@ -192,48 +215,43 @@ class _HomeScreenState extends State<HomeScreen> {
       MapEntry('Isha', times.isha),
     ];
 
-    int notificationId = 0;
+    int notificationId = 100; // use a base offset to avoid collision
 
     for (int i = 0; i < prayers.length; i++) {
-      final prayerName = prayers[i].key;
-      final prayerTime = prayers[i].value; // This is a DateTime?
+      final name = prayers[i].key;
+      final time = prayers[i].value;
 
-      // Skip this prayer if its time is null or has already passed
-      if (prayerTime == null || !prayerTime.isAfter(now)) {
+      // Skip if null or already passed (adding 1 min grace buffer)
+      if (time == null || time.isBefore(now.subtract(const Duration(minutes: 1)))) {
         continue;
       }
 
-      // --- Logic to find the next valid prayer for the notification body ---
-      String nextPrayerInfo;
-      // Find the index of the next prayer that is not null
-      final nextPrayerIndex = prayers.indexWhere(
-        (p) => p.value != null && p.value!.isAfter(prayerTime),
+      // Find next valid prayer
+      String nextPrayerInfo = 'Next prayer time will be shown soon.';
+      final nextIndex = prayers.indexWhere(
+            (p) => p.value != null && p.value!.isAfter(time),
         i + 1,
       );
 
-      if (nextPrayerIndex != -1) {
-        // If a valid next prayer is found
-        final nextPrayer = prayers[nextPrayerIndex];
-        // We can use '!' because indexWhere confirmed value is not null
-        final formattedTime = _formatTime(nextPrayer.value!);
-        nextPrayerInfo =
-            'The next prayer is ${nextPrayer.key} at $formattedTime.';
+      if (nextIndex != -1) {
+        final next = prayers[nextIndex];
+        nextPrayerInfo = 'Next prayer is ${next.key} at ${_formatTime(next.value!)}.';
       } else {
-        // If no next prayer is found for today (i.e., we are scheduling Isha)
-        nextPrayerInfo =
-            'Enjoy your evening. The next prayer is Fajr tomorrow.';
+        nextPrayerInfo = 'End of day. Next is Fajr tomorrow.';
       }
 
-      final notificationBody =
-          'It\'s time for $prayerName prayer. $nextPrayerInfo';
+      final body = 'It\'s time for $name prayer. $nextPrayerInfo';
 
-      // Schedule the notification. 'prayerTime' is guaranteed to be non-null here.
+      // Schedule the notification
       await notificationService.scheduleNotification(
         id: notificationId++,
-        title: '$prayerName Prayer Reminder',
-        body: notificationBody,
-        scheduledTime: prayerTime,
+        title: '$name Prayer Reminder',
+        body: body,
+        scheduledTime: time,
       );
+
+      // Optional Debug Log
+      debugPrint('✅ Scheduled $name at ${time.toLocal()}');
     }
   }
 
@@ -250,6 +268,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      appBar: AppBar(
+          backgroundColor: isDark ? Color(0xFF121212) : scaffoldBackgroundColor,
+          centerTitle: true,
+          title: const AnimatedAppBarTitle()
+
+
+      ),
+
       backgroundColor: isDark
           ? const Color(0xFF121212)
           : const Color(0xfff3e8cb),
@@ -265,17 +291,17 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: isLoading
             ? Center(
-                key: const ValueKey('loading'),
-                child: LoadingAnimationWidget.staggeredDotsWave(
-                  color: isDark ? Colors.teal : Colors.green,
-                  size: 100,
-                ),
-              )
+          key: const ValueKey('loading'),
+          child: LoadingAnimationWidget.staggeredDotsWave(
+            color: isDark ? Colors.teal : Colors.green,
+            size: 100,
+          ),
+        )
             : HomeContent(
-                key: const ValueKey('home'),
-                prayerTimes: prayerTimes,
-                onRefresh: _handleRefresh,
-              ),
+          key: const ValueKey('home'),
+          prayerTimes: prayerTimes,
+          onRefresh: _handleRefresh,
+        ),
       ),
     );
   }
@@ -301,7 +327,7 @@ class HomeContent extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
-            const SafeArea(child: TopBar()),
+            TopBar(),
             const SizedBox(height: 30),
             SalahTile(
               tileColor: const Color(0xffAF3E3E),

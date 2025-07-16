@@ -35,9 +35,15 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  // In your NotificationService class
-
-  // In your NotificationService class
+  Future<void> requestPermissions() async {
+    // This is for Android 13 and above
+    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+    flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+    }
+  }
 
   Future<void> scheduleNotification({
     required int id,
@@ -74,4 +80,26 @@ class NotificationService {
   Future<void> cancelAllNotifications() async {
     await flutterLocalNotificationsPlugin.cancelAll();
   }
+  Future<void> showWelcomeNotification() async {
+    const androidDetails = AndroidNotificationDetails(
+      'startup_channel_id',
+      'Startup Notification',
+      channelDescription: 'Channel for welcome or startup messages.',
+      importance: Importance.low,
+      priority: Priority.low,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      9999, // Arbitrary unique ID
+      'Salah Shuttle is active',
+      'We’ll notify you for each prayer daily.',
+      notificationDetails,
+    );
+  }
+
 }

@@ -74,7 +74,7 @@ class _TopBarBoxState extends State<TopBarBox> {
     final pressedOffsetX = _pressed ? shadowOffsetX : 0.0;
 
     return Padding(
-      padding: EdgeInsets.only(top: screenWidth * 0.2),
+      padding: EdgeInsets.only(top: 20),
       child: GestureDetector(
         // We now handle all logic in the specific down/up/cancel callbacks.
         onTapDown: _onTapDown,
@@ -122,7 +122,7 @@ class _TopBarBoxState extends State<TopBarBox> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         width: 3,
-                        color: isDark ? Colors.white : Colors.black,
+                        color: isDark ? Colors.white : Colors.white,
                       ),
                     ),
                     child: FittedBox(

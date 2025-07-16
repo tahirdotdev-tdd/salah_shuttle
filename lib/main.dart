@@ -1,7 +1,10 @@
+// main.dart
+
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:salah_shuttle/services/background_service.dart';
+import 'package:salah_shuttle/screens/splash_screen.dart'; // <-- IMPORT THE SPLASH SCREEN
 import 'package:showcaseview/showcaseview.dart';
 import 'package:salah_shuttle/services/notification_service.dart';
 import 'package:salah_shuttle/utils/dark_theme.dart';
@@ -17,6 +20,7 @@ Future<void> main() async {
   // --- Initialize Services ---
   await NotificationService().init();
   await AndroidAlarmManager.initialize();
+  await NotificationService().showWelcomeNotification();
 
   runApp(
     ChangeNotifierProvider(
@@ -57,10 +61,8 @@ class MyApp extends StatelessWidget {
         theme: lightTheme,
         darkTheme: darkTheme,
         themeMode: themeProvider.currentTheme,
-        home: ShowCaseWidget(
-          builder: (context) => const HomeScreen(),
-          blurValue: 1,
-        ),
+        // *** MODIFIED HERE: Set SplashScreen as the initial screen ***
+        home: const SplashScreen(),
       ),
     );
   }
