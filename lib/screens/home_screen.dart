@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-
+import 'package:salah_shuttle/services/notification_service.dart';
 import 'package:salah_shuttle/widgets/custom_refresh.dart';
 import 'package:salah_shuttle/widgets/salah_tile.dart';
 import 'package:salah_shuttle/widgets/top_bar.dart';
@@ -37,12 +37,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Shows a custom AlertDialog for the initial offline state.
   void _showNoInternetDialog() {
-    // This ensures the dialog is shown only after the first frame is rendered.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showDialog(
         context: context,
-        barrierDismissible: false, // User must interact with the dialog
+        barrierDismissible: false,
         builder: (_) => AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -58,17 +57,17 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Text(
                 'No Internet Connection',
-                style: TextStyle(fontWeight: FontWeight.bold,fontSize: 18),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
               IconButton(
-                icon: const Icon(Icons.close,size: 25,color: Colors.red,),
+                icon: const Icon(Icons.close, size: 25, color: Colors.red),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
               ),
             ],
           ),
-          content:  Text(
+          content: const Text(
             textAlign: TextAlign.center,
             'Prayer times are fetched locally.',
             style: TextStyle(fontSize: 16),
@@ -102,20 +101,19 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Listens for connectivity changes while the app is running.
   void _listenToConnectivity() {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      List<ConnectivityResult> results,
+      results,
     ) {
-      // Use the less-intrusive SnackBar for changes that happen after the initial load.
       if (results.contains(ConnectivityResult.none) && !isLoading) {
         _showOfflineSnackbar();
       }
     });
   }
 
-  /// Fetches location and calculates prayer times on initial load or refresh.
+  /// ✅ CORRECTED AND NULL-SAFE
+  /// Fetches location, calculates prayer times, updates UI, and schedules notifications.
   Future<void> _fetchPrayerTimes() async {
     final List<ConnectivityResult> connectivityResult = await Connectivity()
         .checkConnectivity();
-    // Use the AlertDialog for the initial check.
     if (connectivityResult.contains(ConnectivityResult.none)) {
       _showNoInternetDialog();
     }
@@ -136,8 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ).timeout(const Duration(seconds: 15));
 
       final coordinates = Coordinates(pos.latitude, pos.longitude);
-      final params = CalculationMethod.karachi();
-      params.madhab = Madhab.hanafi;
+      final params = CalculationMethod.karachi()..madhab = Madhab.hanafi;
       final date = DateTime.now();
       final times = PrayerTimes(
         coordinates: coordinates,
@@ -147,13 +144,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
 
+      // Schedule notifications using the new 'times' object
+      await _scheduleNotifications(times);
+
+      // Update the UI with formatted times, safely handling nulls
       setState(() {
         prayerTimes = {
-          'fajr': _formatTime(times.fajr!),
-          'dhuhr': _formatTime(times.dhuhr!),
-          'asr': _formatTime(times.asr!),
-          'maghrib': _formatTime(times.maghrib!),
-          'isha': _formatTime(times.isha!),
+          'fajr': times.fajr == null ? '--:--' : _formatTime(times.fajr!),
+          'dhuhr': times.dhuhr == null ? '--:--' : _formatTime(times.dhuhr!),
+          'asr': times.asr == null ? '--:--' : _formatTime(times.asr!),
+          'maghrib': times.maghrib == null
+              ? '--:--'
+              : _formatTime(times.maghrib!),
+          'isha': times.isha == null ? '--:--' : _formatTime(times.isha!),
         };
         isLoading = false;
       });
@@ -172,6 +175,69 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// ✅ CORRECTED AND NULL-SAFE
+  /// A helper method to handle scheduling of all prayer notifications.
+  Future<void> _scheduleNotifications(PrayerTimes times) async {
+    final notificationService = NotificationService();
+    await notificationService.cancelAllNotifications();
+
+    final now = DateTime.now();
+
+    // The list must accept nullable DateTimes from the 'times' object
+    final List<MapEntry<String, DateTime?>> prayers = [
+      MapEntry('Fajr', times.fajr),
+      MapEntry('Dhuhr', times.dhuhr),
+      MapEntry('Asr', times.asr),
+      MapEntry('Maghrib', times.maghrib),
+      MapEntry('Isha', times.isha),
+    ];
+
+    int notificationId = 0;
+
+    for (int i = 0; i < prayers.length; i++) {
+      final prayerName = prayers[i].key;
+      final prayerTime = prayers[i].value; // This is a DateTime?
+
+      // Skip this prayer if its time is null or has already passed
+      if (prayerTime == null || !prayerTime.isAfter(now)) {
+        continue;
+      }
+
+      // --- Logic to find the next valid prayer for the notification body ---
+      String nextPrayerInfo;
+      // Find the index of the next prayer that is not null
+      final nextPrayerIndex = prayers.indexWhere(
+        (p) => p.value != null && p.value!.isAfter(prayerTime),
+        i + 1,
+      );
+
+      if (nextPrayerIndex != -1) {
+        // If a valid next prayer is found
+        final nextPrayer = prayers[nextPrayerIndex];
+        // We can use '!' because indexWhere confirmed value is not null
+        final formattedTime = _formatTime(nextPrayer.value!);
+        nextPrayerInfo =
+            'The next prayer is ${nextPrayer.key} at $formattedTime.';
+      } else {
+        // If no next prayer is found for today (i.e., we are scheduling Isha)
+        nextPrayerInfo =
+            'Enjoy your evening. The next prayer is Fajr tomorrow.';
+      }
+
+      final notificationBody =
+          'It\'s time for $prayerName prayer. $nextPrayerInfo';
+
+      // Schedule the notification. 'prayerTime' is guaranteed to be non-null here.
+      await notificationService.scheduleNotification(
+        id: notificationId++,
+        title: '$prayerName Prayer Reminder',
+        body: notificationBody,
+        scheduledTime: prayerTime,
+      );
+    }
+  }
+
+  /// Formats a non-nullable DateTime into a string.
   String _formatTime(DateTime dt) {
     return TimeOfDay.fromDateTime(dt.toLocal()).format(context);
   }
@@ -215,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// NOTE: The HomeContent widget remains unchanged as it is not affected by this logic.
+// NOTE: The HomeContent widget remains unchanged.
 class HomeContent extends StatelessWidget {
   final Map<String, String> prayerTimes;
   final Future<void> Function() onRefresh;

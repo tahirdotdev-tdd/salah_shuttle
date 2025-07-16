@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:salah_shuttle/styles/colors.dart';
 import 'package:salah_shuttle/styles/fonts.dart';
 import 'package:salah_shuttle/widgets/tasbeeh_widget.dart';

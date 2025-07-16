@@ -1,6 +1,5 @@
 import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:salah_shuttle/styles/colors.dart';
 import 'package:salah_shuttle/styles/fonts.dart';
 import 'package:salah_shuttle/widgets/hijri_date_tile.dart';
